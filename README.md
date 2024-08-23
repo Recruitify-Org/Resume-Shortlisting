@@ -1,17 +1,15 @@
-
 # Resume Parsing & Shortlisting Web App
 
 This is an end to end machine learning project served on Flask for parsing and ranking candidates based on similarity scores between resumes and job description.
 
-A Resume Parser helps organizations eliminate the error-prone and time-consuming process and improves recruiters' efficiency. 
+A Resume Parser helps organizations eliminate the error-prone and time-consuming process and improves recruiters' efficiency.
 In fact, for recruiters it is a challenging task to handle thousands of resumes manually.
+
 ## Features
 
-- Lightweight simple web app
+- Lightweight simple api for parsing and ranking candidates based on similarity scores between resumes and job description
 - Handle multiples documents types (pdf, doc, docx)
-- Extract relevant informations (candidate's name, email id, phone number, skills)
 - Rank candidates based on similarity scores between resumes and job description.
-
 
 ## Run Locally
 
@@ -36,14 +34,11 @@ Install dependencies
 Start the web app
 
 ```bash
- python -m flask run
+ python app.py
 ```
 
-
-## Screenshots
+<!-- ## Screenshots
 
 ![Alt home](/screenshots/home.png?raw=true "Home")
 ##### Extracted informations
-![Alt Candidates](/screenshots/outputsheet.png?raw=true "Output")
-
-
+![Alt Candidates](/screenshots/outputsheet.png?raw=true "Output") -->
