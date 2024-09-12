@@ -15,20 +15,25 @@ def extract_text_from_pdf(pdf_path):
     :param pdf_path: path for the pdf file
     :return: text
     """
-    r_manager = PDFResourceManager()
-    output = io.StringIO()
-    converter = TextConverter(r_manager, output, laparams=LAParams())
-    p_interpreter = PDFPageInterpreter(r_manager, converter)
+    try:
+        r_manager = PDFResourceManager()
+        output = io.StringIO()
+        converter = TextConverter(r_manager, output, laparams=LAParams())
+        p_interpreter = PDFPageInterpreter(r_manager, converter)
 
-    with open(pdf_path, 'rb') as file:
-        for page in PDFPage.get_pages(file, caching=True, check_extractable=True):
-            p_interpreter.process_page(page)
-            text = output.getvalue()
-        
-    converter.close()
-    output.close()
+        with open(pdf_path, 'rb') as file:
+            for page in PDFPage.get_pages(file, caching=True, check_extractable=True):
+                p_interpreter.process_page(page)
+                text = output.getvalue()
+            
+        converter.close()
+        output.close()
 
-    return text
+        return text
+    except Exception as e:
+        print("Error reading pdf file:" + pdf_path)
+        print(e)
+        return ""
 
 
  
@@ -56,9 +61,10 @@ def read_files(file_path):
     for filename in os.listdir(file_path):
         if filename.endswith(".pdf"):
             try:
-                fileTXT.append(extract_text_from_pdf(file_path+filename))
-            except Exception:
-                print("Error Reading pdf file :" + filename)
+                fileTXT.append(extract_text_from_pdf(file_path+"/"+filename))
+            except Exception as e:
+                print(f"Error Reading pdf file: {filename}. Error: {str(e)}")
+                
         
         if filename.endswith(".docx"):
             try:

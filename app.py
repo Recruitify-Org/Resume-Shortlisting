@@ -9,6 +9,7 @@ import pandas as pd
 import json
 import os
 import uuid
+import shutil
 from flask import Flask, flash, request, redirect, url_for, render_template, send_file,jsonify
 from dotenv import load_dotenv
 load_dotenv()
@@ -153,31 +154,49 @@ def process():
         return send_file(out_path, as_attachment=True)
 
 
+
+
 @app.route('/process_s3', methods=["POST"])
 def process_s3():
     try:
         if request.method == 'POST':
             data = request.json
-            s3_keys = data.get('applicants')
+            applicants = data.get('applicants')
             job_description = data.get('jobDescription')
-            
-            if not s3_keys or not job_description:
+            job_id = data.get('job_id')
+            no_of_applicants = data.get('noOfApplicants')
+            print(data)
+            if not applicants or not job_description or not job_id or not no_of_applicants:
                 return jsonify({"error": "Missing required fields"}), 400
 
-            downloaded_files = []
-            for s3_key in s3_keys:
-               filename = f"{s3_key}.pdf"
-    
-               # Construct the full download path
-               download_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-               # Download the file from S3 and save it to the specified path
-               download_file_from_s3(s3_key, download_path)
-            
-               # Append the path of the downloaded file to the list
-               downloaded_files.append(download_path)
+            # Create a directory for the specific job using job_id
+            job_folder = os.path.join(app.config['UPLOAD_FOLDER'], f"job_{job_id}")
+            if not os.path.exists(job_folder):
+                os.makedirs(job_folder)
 
-            resumetxt = read_files(app.config['UPLOAD_FOLDER'])
+            downloaded_files = []
+            user_ids = []
+            for applicant in applicants:
+                s3_key = applicant.get('s3_key')
+                user_id = applicant.get('user_id')
+
+                if not s3_key or not user_id:
+                    continue  # Skip invalid entries
+
+                filename = f"{s3_key}.pdf"
+
+                # Construct the full download path inside the job folder
+                download_path = os.path.join(job_folder, filename)
+            
+                # Download the file from S3 and save it to the specified path
+                download_file_from_s3(s3_key, download_path)
+            
+                # Append the path of the downloaded file and user_id
+                downloaded_files.append(download_path)
+                user_ids.append(user_id)
+
+            # Read and process the downloaded resumes
+            resumetxt = read_files(job_folder)
             p_resumetxt = preprocess(resumetxt)
             p_jdtxt = preprocess([job_description])
 
@@ -186,7 +205,7 @@ def process_s3():
 
             df = simil(feats_red, p_resumetxt, p_jdtxt)
 
-            t = pd.DataFrame({'Original Resume': resumetxt})
+            t = pd.DataFrame({'Original Resume': resumetxt, 'User ID': user_ids})
             dt = pd.concat([df, t], axis=1)
 
             dt['Phone No.'] = dt['Original Resume'].apply(get_number)
@@ -202,13 +221,14 @@ def process_s3():
             dt['Skills'] = dt['Original'].apply(lambda x: get_skills(x, skill))
             dt = dt.drop(columns=['Original', 'Original Resume'])
             sorted_dt = dt.sort_values(by=['JD 1'], ascending=False)
+            # Limit the number of shortlisted candidates to no_of_applicants
+            top_candidates = sorted_dt.head(no_of_applicants)
 
-            # Save the sorted results
-            out_path = os.path.join(app.config['DOWNLOAD_FOLDER'], "Candidates.csv")
-            sorted_dt.to_csv(out_path, index=False)
+            # Extract top applicants' user IDs
+            top_applicants = top_candidates['User ID'].tolist()
 
-            # Extract top applicants' IDs assuming the index or a specific column represents IDs
-            top_applicants = sorted_dt.index.tolist()  # Adjust as needed to match your data structure
+            # Clean up: remove the job-specific folder after processing
+            shutil.rmtree(job_folder)
 
             return jsonify({"topApplicants": top_applicants})
     except Exception as e:
